@@ -2,7 +2,7 @@ CREATE TYPE vulnerability_severity AS ENUM ('low', 'medium', 'high', 'critical')
 CREATE TYPE vulnerability_status AS ENUM ('open', 'in_progress', 'mitigated', 'resolved');
 
 CREATE TABLE vulnerabilities (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     cve_id VARCHAR(50),
     title VARCHAR(255) NOT NULL,
     description TEXT,

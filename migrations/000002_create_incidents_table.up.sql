@@ -3,7 +3,7 @@ CREATE TYPE incident_severity AS ENUM ('low', 'medium', 'high', 'critical');
 CREATE TYPE incident_status AS ENUM ('detected', 'investigating', 'contained', 'resolved');
 
 CREATE TABLE incidents (
-                           id UUID PRIMARY KEY,
+                           id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                            title VARCHAR(255) NOT NULL,
                            description TEXT,
                            category incident_category NOT NULL,
