@@ -1,6 +1,9 @@
 package data
 
-import "database/sql"
+import (
+	"database/sql"
+	"secureGuard/internal/models"
+)
 
 type IncidentModel struct {
 	DB *sql.DB

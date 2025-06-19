@@ -16,7 +16,7 @@ func (m *VulnerabilityModel) Insert(vuln *models.Vulnerability) error {
 		RETURNING id, created_at, updated_at`
 	return m.DB.QueryRow(
 		query,
-		vuln.CveID,
+		vuln.CveId,
 		vuln.Title,
 		vuln.Description,
 		vuln.Severity,
@@ -32,7 +32,7 @@ func (m *VulnerabilityModel) Update(vuln *models.Vulnerability) error {
 		RETURNING updated_at`
 	return m.DB.QueryRow(
 		query,
-		vuln.CveID,
+		vuln.CveId,
 		vuln.Title,
 		vuln.Description,
 		vuln.Severity,
@@ -55,7 +55,7 @@ func (m *VulnerabilityModel) Get(id string) (*models.Vulnerability, error) {
 	vuln := &models.Vulnerability{}
 	err := m.DB.QueryRow(query, id).Scan(
 		&vuln.Id,
-		&vuln.CveID,
+		&vuln.CveId,
 		&vuln.Title,
 		&vuln.Description,
 		&vuln.Severity,
@@ -85,7 +85,7 @@ func (m *VulnerabilityModel) List() ([]*models.Vulnerability, error) {
 		vuln := &models.Vulnerability{}
 		err := rows.Scan(
 			&vuln.Id,
-			&vuln.CveID,
+			&vuln.CveId,
 			&vuln.Title,
 			&vuln.Description,
 			&vuln.Severity,

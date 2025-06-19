@@ -112,7 +112,7 @@ func (m *AssetModel) List() ([]*models.Asset, error) {
 
 func (m *AssetModel) GetVulnerabilities(id string) ([]*models.Vulnerability, error) {
 	query := `
-		SELECT v.id, v.name, v.description, v.severity, v.created_at, v.updated_at
+		SELECT v.id, v.cve_id,v.title, v.description, v.severity, v.status, v.created_at, v.updated_at
 		FROM asset_vulnerabilities av
 		JOIN vulnerabilities v ON av.vulnerability_id = v.id
 		WHERE av.asset_id = $1;`
@@ -127,9 +127,11 @@ func (m *AssetModel) GetVulnerabilities(id string) ([]*models.Vulnerability, err
 		v := &models.Vulnerability{}
 		err := rows.Scan(
 			&v.Id,
-			&v.Name,
+			&v.CveId,
+			&v.Title,
 			&v.Description,
 			&v.Severity,
+			&v.Status,
 			&v.CreatedAt,
 			&v.UpdatedAt,
 		)
