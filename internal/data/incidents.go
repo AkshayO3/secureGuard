@@ -2,6 +2,8 @@ package data
 
 import (
 	"database/sql"
+	"errors"
+	"github.com/lib/pq"
 	"secureGuard/internal/models"
 )
 
@@ -10,30 +12,53 @@ type IncidentModel struct {
 }
 
 func (m *IncidentModel) Insert(incident *models.Incident) error {
-	query := `
-		INSERT INTO incidents (title, description, category, severity, status, reported_by, assigned_to)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, created_at, updated_at`
-	return m.DB.QueryRow(
-		query,
-		incident.Title,
-		incident.Description,
-		incident.Category,
-		incident.Severity,
-		incident.Status,
-		incident.ReportedBy,
-		incident.AssignedTo,
-	).Scan(&incident.Id, &incident.CreatedAt, &incident.UpdatedAt)
+	if err := models.ValidateIncident(m.DB, incident); err != nil {
+		return err
+	}
+	var assignedTo interface{}
+	if incident.AssignedTo == "" {
+		assignedTo = nil
+	} else {
+		assignedTo = incident.AssignedTo
+	}
+	_, err := m.DB.Exec(`INSERT INTO incidents (title,description,category,severity,status,reported_by,assigned_to)
+							  VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		incident.Title, incident.Description, incident.Category,
+		incident.Severity, incident.Status, incident.ReportedBy, assignedTo)
+	return err
 }
 
 func (m *IncidentModel) Update(incident *models.Incident) error {
-	query := `
-		UPDATE incidents
-		SET title = $1, description = $2, category = $3, severity = $4, status = $5, reported_by = $6, assigned_to = $7, updated_at = NOW()
-		WHERE id = $8
-		RETURNING updated_at`
-	return m.DB.QueryRow(
-		query,
+	current, err := m.Get(incident.Id)
+	if err != nil {
+		return err
+	}
+	if incident.Title == "" {
+		incident.Title = current.Title
+	}
+	if incident.Description == "" {
+		incident.Description = current.Description
+	}
+	if incident.Category == "" {
+		incident.Category = current.Category
+	}
+	if incident.Severity == "" {
+		incident.Severity = current.Severity
+	}
+	if incident.Status == "" {
+		incident.Status = current.Status
+	}
+	if incident.ReportedBy == "" {
+		incident.ReportedBy = current.ReportedBy
+	}
+	if incident.AssignedTo == "" {
+		incident.AssignedTo = current.AssignedTo
+	}
+	if err := models.ValidateIncident(m.DB, incident); err != nil {
+		return err
+	}
+	_, err = m.DB.Exec(
+		`UPDATE incidents SET title = $1, description = $2, category = $3, severity = $4, status = $5, reported_by = $6, assigned_to = $7, updated_at = NOW() WHERE id = $8`,
 		incident.Title,
 		incident.Description,
 		incident.Category,
@@ -42,13 +67,23 @@ func (m *IncidentModel) Update(incident *models.Incident) error {
 		incident.ReportedBy,
 		incident.AssignedTo,
 		incident.Id,
-	).Scan(&incident.UpdatedAt)
+	)
+	return err
 }
 
 func (m *IncidentModel) Delete(id string) error {
-	query := `DELETE FROM incidents WHERE id = $1`
-	_, err := m.DB.Exec(query, id)
-	return err
+	result, err := m.DB.Exec(`DELETE FROM incidents WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errors.New("incident not found")
+	}
+	return nil
 }
 
 func (m *IncidentModel) Get(id string) (*models.Incident, error) {
@@ -56,6 +91,7 @@ func (m *IncidentModel) Get(id string) (*models.Incident, error) {
 		SELECT id, title, description, category, severity, status, reported_by, assigned_to, created_at, updated_at
 		FROM incidents
 		WHERE id = $1`
+	var AssignedTo sql.NullString
 	incident := &models.Incident{}
 	err := m.DB.QueryRow(query, id).Scan(
 		&incident.Id,
@@ -65,12 +101,17 @@ func (m *IncidentModel) Get(id string) (*models.Incident, error) {
 		&incident.Severity,
 		&incident.Status,
 		&incident.ReportedBy,
-		&incident.AssignedTo,
+		&AssignedTo,
 		&incident.CreatedAt,
 		&incident.UpdatedAt,
 	)
-	if err != nil {
-		return nil, err
+	if AssignedTo.Valid {
+		incident.AssignedTo = AssignedTo.String
+	} else {
+		incident.AssignedTo = "null"
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errors.New("incident not found")
 	}
 	return incident, nil
 }
@@ -85,7 +126,7 @@ func (m *IncidentModel) List() ([]*models.Incident, error) {
 		return nil, err
 	}
 	defer rows.Close()
-
+	var AssignedTo sql.NullString
 	var incidents []*models.Incident
 	for rows.Next() {
 		incident := &models.Incident{}
@@ -97,19 +138,24 @@ func (m *IncidentModel) List() ([]*models.Incident, error) {
 			&incident.Severity,
 			&incident.Status,
 			&incident.ReportedBy,
-			&incident.AssignedTo,
+			&AssignedTo,
 			&incident.CreatedAt,
 			&incident.UpdatedAt,
 		)
+		if AssignedTo.Valid {
+			incident.AssignedTo = AssignedTo.String
+		} else {
+			incident.AssignedTo = "null"
+		}
 		if err != nil {
 			return nil, err
 		}
 		incidents = append(incidents, incident)
 	}
-	return incidents, rows.Err()
+	return incidents, nil
 }
 
-func (m *AssetModel) GetAssetsByIncident(incidentId string) ([]*models.Asset, error) {
+func (m *IncidentModel) GetAssetsByIncident(incidentId string) ([]*models.Asset, error) {
 	query := `
 		SELECT a.id, a.name, a.type, a.ip_address, a.os, a.status, a.created_at, a.updated_at
 		FROM incidentassets ia
@@ -143,7 +189,17 @@ func (m *AssetModel) GetAssetsByIncident(incidentId string) ([]*models.Asset, er
 }
 
 func (m *IncidentModel) AssociateAsset(incidentId, assetId string) error {
-	query := `INSERT INTO incidentassets (incident_id, asset_id) VALUES ($1, $2)`
+	query := `INSERT INTO incident_assets (incident_id, asset_id) VALUES ($1, $2)`
 	_, err := m.DB.Exec(query, incidentId, assetId)
-	return err
+	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return errors.New("association already exists")
+		}
+		if errors.As(err, &pqErr) && pqErr.Code == "23503" {
+			return errors.New("incident or asset does not exist")
+		}
+		return err
+	}
+	return nil
 }

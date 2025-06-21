@@ -22,11 +22,11 @@ func ValidateAsset(a *Asset) error {
 	}
 	ValidType := map[string]bool{"server": true, "workstation": true, "network_device": true, "application": true}
 	if !ValidType[a.Type] {
-		return errors.New("not a valid value for incident severity")
+		return errors.New("not a valid value for asset severity")
 	}
-	ValidStatus := map[string]bool{"vulnerable": true, "patched": true, "not_applicable": true}
+	ValidStatus := map[string]bool{"active": true, "inactive": true, "decomissioned": true}
 	if !ValidStatus[a.Status] {
-		return errors.New("not a valid value for incident status")
+		return errors.New("not a valid value for asset status")
 	}
 	return nil
 }

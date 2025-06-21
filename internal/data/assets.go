@@ -11,18 +11,18 @@ type AssetModel struct {
 }
 
 func (m *AssetModel) Insert(asset *models.Asset) error {
-	query := `
-		INSERT INTO assets (name, type, ip_address, os, status)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at`
-	return m.DB.QueryRow(
-		query,
+	if err := models.ValidateAsset(asset); err != nil {
+		return err
+	}
+	_, err := m.DB.Exec(
+		`INSERT INTO assets (name, type, ip_address, os, status) VALUES ($1, $2, $3, $4, $5)`,
 		asset.Name,
 		asset.Type,
 		asset.Ip,
 		asset.Os,
 		asset.Status,
-	).Scan(&asset.Id, &asset.CreatedAt, &asset.UpdatedAt)
+	)
+	return err
 }
 
 func (m *AssetModel) Get(id string) (*models.Asset, error) {
@@ -40,32 +40,44 @@ func (m *AssetModel) Get(id string) (*models.Asset, error) {
 		&asset.CreatedAt,
 		&asset.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errors.New("asset not found")
 	}
 	return asset, err
 }
 
 func (m *AssetModel) Update(asset *models.Asset) error {
-	query := `
-		UPDATE assets
-		SET name = $1, type = $2, ip_address = $3, os = $4, status = $5, updated_at = NOW()
-		WHERE id = $6
-		RETURNING updated_at`
-	return m.DB.QueryRow(
-		query,
-		asset.Name,
-		asset.Type,
-		asset.Ip,
-		asset.Os,
-		asset.Status,
-		asset.Id,
-	).Scan(&asset.UpdatedAt)
+	current, err := m.Get(asset.Id)
+	if err != nil {
+		return err
+	}
+	if err := models.ValidateAsset(current); err != nil {
+		return err
+	}
+	if asset.Name == "" {
+		asset.Name = current.Name
+	}
+	if asset.Type == "" {
+		asset.Type = current.Type
+	}
+	if asset.Ip == "" {
+		asset.Ip = current.Ip
+	}
+	if asset.Os == "" {
+		asset.Os = current.Os
+	}
+	if asset.Status == "" {
+		asset.Status = current.Status
+	}
+	_, err = m.DB.Exec(
+		`UPDATE assets SET name = $1, type = $2, ip_address = $3, os = $4, status = $5, updated_at = NOW() WHERE id = $6`,
+		asset.Name, asset.Type, asset.Ip, asset.Os, asset.Status, asset.Id,
+	)
+	return err
 }
 
 func (m *AssetModel) Delete(id string) error {
-	query := `DELETE FROM assets WHERE id = $1`
-	result, err := m.DB.Exec(query, id)
+	result, err := m.DB.Exec(`DELETE FROM assets WHERE id = $1`, id)
 	if err != nil {
 		return err
 	}
@@ -82,7 +94,7 @@ func (m *AssetModel) Delete(id string) error {
 func (m *AssetModel) List() ([]*models.Asset, error) {
 	query := `
 		SELECT id, name, type, ip_address, os, status, created_at, updated_at
-		FROM assets`
+		FROM assets ORDER BY created_at DESC `
 	rows, err := m.DB.Query(query)
 	if err != nil {
 		return nil, err
@@ -146,7 +158,7 @@ func (m *AssetModel) GetVulnerabilities(id string) ([]*models.Vulnerability, err
 func (m *AssetModel) GetIncidents(id string) ([]*models.Incident, error) {
 	query := `
 		SELECT i.id, i.title, i.description, i.severity, i.status, i.created_at, i.updated_at
-		FROM incidentassets ia
+		FROM incident_assets ia
 		JOIN incidents i ON ia.incident_id = i.id
 		WHERE ia.asset_id = $1;`
 	rows, err := m.DB.Query(query, id)

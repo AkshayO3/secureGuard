@@ -1,0 +1,1 @@
+ALTER TABLE incidents ALTER COLUMN assigned_to SET NOT NULL;

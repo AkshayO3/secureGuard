@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
 	"time"
 )
@@ -18,7 +19,7 @@ type Incident struct {
 	UpdatedAt   time.Time
 }
 
-func ValidateIncident(i *Incident) error {
+func ValidateIncident(db *sql.DB, i *Incident) error {
 	if i.Title == "" {
 		return errors.New("title cannot be empty")
 	}
@@ -35,6 +36,12 @@ func ValidateIncident(i *Incident) error {
 	ValidStatus := map[string]bool{"detected": true, "investigating": true, "contained": true, "resolved": true}
 	if !ValidStatus[i.Status] {
 		return errors.New("not a valid value for incident status")
+	}
+	if !ValidateUserExists(db, i.ReportedBy) {
+		return errors.New("reporting user was not found in records")
+	}
+	if i.AssignedTo != "" && !ValidateUserExists(db, i.AssignedTo) {
+		return errors.New("assigned user was not found")
 	}
 	return nil
 }

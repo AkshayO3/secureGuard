@@ -2,6 +2,8 @@ package data
 
 import (
 	"database/sql"
+	"errors"
+	"github.com/lib/pq"
 	"secureGuard/internal/models"
 )
 
@@ -10,41 +12,68 @@ type VulnerabilityModel struct {
 }
 
 func (m *VulnerabilityModel) Insert(vuln *models.Vulnerability) error {
-	query := `
-		INSERT INTO vulnerabilities (cve_id, title, description, severity, status)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at`
-	return m.DB.QueryRow(
-		query,
+	if err := models.ValidateVulnerability(vuln); err != nil {
+		return err
+	}
+	_, err := m.DB.Exec(
+		`INSERT INTO vulnerabilities (cve_id, title, description, severity, status) VALUES ($1, $2, $3, $4, $5)`,
 		vuln.CveId,
 		vuln.Title,
 		vuln.Description,
 		vuln.Severity,
 		vuln.Status,
-	).Scan(&vuln.Id, &vuln.CreatedAt, &vuln.UpdatedAt)
+	)
+	return err
 }
 
 func (m *VulnerabilityModel) Update(vuln *models.Vulnerability) error {
-	query := `
-		UPDATE vulnerabilities
-		SET cve_id = $1, title = $2, description = $3, severity = $4, status = $5, updated_at = NOW()
-		WHERE id = $6
-		RETURNING updated_at`
-	return m.DB.QueryRow(
-		query,
+	current, err := m.Get(vuln.Id)
+	if err != nil {
+		return err
+	}
+	if err := models.ValidateVulnerability(current); err != nil {
+		return err
+	}
+	if vuln.CveId == "" {
+		vuln.CveId = current.CveId
+	}
+	if vuln.Title == "" {
+		vuln.Title = current.Title
+	}
+	if vuln.Description == "" {
+		vuln.Description = current.Description
+	}
+	if vuln.Severity == "" {
+		vuln.Severity = current.Severity
+	}
+	if vuln.Status == "" {
+		vuln.Status = current.Status
+	}
+	_, err = m.DB.Exec(
+		`UPDATE vulnerabilities SET cve_id = $1, title = $2, description = $3, severity = $4, status = $5, updated_at = NOW() WHERE id = $6`,
 		vuln.CveId,
 		vuln.Title,
 		vuln.Description,
 		vuln.Severity,
 		vuln.Status,
 		vuln.Id,
-	).Scan(&vuln.UpdatedAt)
+	)
+	return err
 }
 
 func (m *VulnerabilityModel) Delete(id string) error {
-	query := `DELETE FROM vulnerabilities WHERE id = $1`
-	_, err := m.DB.Exec(query, id)
-	return err
+	result, err := m.DB.Exec(`DELETE FROM vulnerabilities WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errors.New("vulnerability not found")
+	}
+	return nil
 }
 
 func (m *VulnerabilityModel) Get(id string) (*models.Vulnerability, error) {
@@ -98,10 +127,10 @@ func (m *VulnerabilityModel) List() ([]*models.Vulnerability, error) {
 		}
 		vulns = append(vulns, vuln)
 	}
-	return vulns, rows.Err()
+	return vulns, nil
 }
 
-func (m *AssetModel) GetAssetsByVulnerability(vulnId string) ([]*models.Asset, error) {
+func (m *VulnerabilityModel) GetAssetsByVulnerability(vulnId string) ([]*models.Asset, error) {
 	query := `
 		SELECT a.id, a.name, a.type, a.ip_address, a.os, a.status, a.created_at, a.updated_at
 		FROM asset_vulnerabilities av
@@ -134,8 +163,17 @@ func (m *AssetModel) GetAssetsByVulnerability(vulnId string) ([]*models.Asset, e
 	return assets, nil
 }
 
-func (m *VulnerabilityModel) AssociateAsset(vulnId, assetId string) error {
-	query := `INSERT INTO asset_vulnerabilities (asset_id, vulnerability_id) VALUES ($1, $2)`
-	_, err := m.DB.Exec(query, assetId, vulnId)
-	return err
+func (m *VulnerabilityModel) AssociateAsset(vulnId, assetId, status string) error {
+	query := `INSERT INTO asset_vulnerabilities (asset_id, vulnerability_id, status) VALUES ($1, $2, $3)`
+	_, err := m.DB.Exec(query, assetId, vulnId, status)
+	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			return errors.New("asset-vulnerability association already exists")
+		}
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23503" {
+			return errors.New("asset or vulnerability does not exist")
+		}
+		return err
+	}
+	return nil
 }
