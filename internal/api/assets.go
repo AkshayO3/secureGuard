@@ -20,7 +20,7 @@ type AssetObject struct {
 	Status string `json:"status"`
 }
 
-func (a *AssetHandler) ListAssets(c *gin.Context) {
+func (a *AssetHandler) List(c *gin.Context) {
 	assets, err := a.AssetModel.List()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
@@ -29,7 +29,7 @@ func (a *AssetHandler) ListAssets(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"assets": assets})
 }
 
-func (a *AssetHandler) GetById(c *gin.Context) {
+func (a *AssetHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	asset, err := a.AssetModel.Get(id)
 	if err != nil {
@@ -39,7 +39,7 @@ func (a *AssetHandler) GetById(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"asset": asset})
 }
 
-func (a *AssetHandler) Create(c *gin.Context) {
+func (a *AssetHandler) Insert(c *gin.Context) {
 	var ast AssetObject
 	if err := c.ShouldBindJSON(&ast); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

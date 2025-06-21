@@ -11,7 +11,7 @@ type IncidentHandler struct {
 	IncidentModel *data.IncidentModel
 }
 
-type IncidentStruct struct {
+type IncidentObject struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Category    string `json:"category"`
@@ -26,7 +26,7 @@ type AssocIA struct {
 	AID string
 }
 
-func (i *IncidentHandler) ListIncidents(c *gin.Context) {
+func (i *IncidentHandler) List(c *gin.Context) {
 	incidents, err := i.IncidentModel.List()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
@@ -35,8 +35,8 @@ func (i *IncidentHandler) ListIncidents(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"incidents": incidents})
 }
 
-func (i *IncidentHandler) CreateIncident(c *gin.Context) {
-	var incident IncidentStruct
+func (i *IncidentHandler) Insert(c *gin.Context) {
+	var incident IncidentObject
 	if err := c.ShouldBindJSON(&incident); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
@@ -58,7 +58,7 @@ func (i *IncidentHandler) CreateIncident(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"incident": inchident})
 }
 
-func (i *IncidentHandler) GetById(c *gin.Context) {
+func (i *IncidentHandler) Get(c *gin.Context) {
 	id := c.Param("incidentId")
 	incident, err := i.IncidentModel.Get(id)
 	if err != nil {
@@ -68,9 +68,9 @@ func (i *IncidentHandler) GetById(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"incident": incident})
 }
 
-func (i *IncidentHandler) UpdateById(c *gin.Context) {
+func (i *IncidentHandler) Update(c *gin.Context) {
 	id := c.Param("incidentId")
-	var incident IncidentStruct
+	var incident IncidentObject
 	if err := c.ShouldBindJSON(&incident); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -93,7 +93,7 @@ func (i *IncidentHandler) UpdateById(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"incident": inchident})
 }
 
-func (i *IncidentHandler) DeleteById(c *gin.Context) {
+func (i *IncidentHandler) Delete(c *gin.Context) {
 	id := c.Param("incidentId")
 	err := i.IncidentModel.Delete(id)
 	if err != nil {
@@ -103,7 +103,7 @@ func (i *IncidentHandler) DeleteById(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "incident deletion successful"})
 }
 
-func (i *IncidentHandler) AssociateIncidentWithAsset(c *gin.Context) {
+func (i *IncidentHandler) AssociateA(c *gin.Context) {
 	var assoc AssocIA
 	if err := c.ShouldBindJSON(&assoc); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())

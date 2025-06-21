@@ -25,7 +25,7 @@ type AssocVA struct {
 	Status string
 }
 
-func (v *VulnerabilityHandler) ListVulnerabilities(c *gin.Context) {
+func (v *VulnerabilityHandler) List(c *gin.Context) {
 	vulns, err := v.VulnerabilityModel.List()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -38,7 +38,7 @@ func (v *VulnerabilityHandler) ListVulnerabilities(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"vulnerabilities": vulns})
 }
 
-func (v *VulnerabilityHandler) Create(c *gin.Context) {
+func (v *VulnerabilityHandler) Insert(c *gin.Context) {
 	var vuln VulnerabilityObject
 	if err := c.ShouldBindJSON(&vuln); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
@@ -116,7 +116,7 @@ func (v *VulnerabilityHandler) GetAssociatedAssets(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"associatedAssets": assets})
 }
 
-func (v *VulnerabilityHandler) AssociateAssetWithVuln(c *gin.Context) {
+func (v *VulnerabilityHandler) AssociateA(c *gin.Context) {
 	var obj AssocVA
 	if err := c.ShouldBindJSON(&obj); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())

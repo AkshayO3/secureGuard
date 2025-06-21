@@ -58,3 +58,13 @@ func ValidateUser(db *sql.DB, u *User) error {
 	}
 	return nil
 }
+
+func ValidateUserExists(db *sql.DB, a string) bool {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`
+	err := db.QueryRow(query, a).Scan(&exists)
+	if err != nil {
+		return false
+	}
+	return true
+}
