@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
@@ -18,11 +17,6 @@ import (
 )
 
 func main() {
-	var err error
-	if err := godotenv.Load("../../.env"); err != nil {
-		log.Fatalf("Environment initialization failed -> %v", err.Error())
-		return
-	}
 	db, errD := data.NewDB()
 	if errD != nil {
 		log.Fatalf("Cannot connect to the db %v", errD.Error())
@@ -34,7 +28,7 @@ func main() {
 		}
 	}(db)
 	if errD := db.Ping(); errD != nil {
-		log.Fatalf("DB Unreachable: %v", err)
+		log.Fatalf("DB Unreachable: %v", errD)
 	}
 	userModel := &data.UserModel{DB: db}
 	assetModel := &data.AssetModel{DB: db}
@@ -61,6 +55,7 @@ func main() {
 			log.Fatalf("Server failed %v", err)
 		}
 	}()
+	log.Printf("Server started successfully on port %s", os.Getenv("PORT"))
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

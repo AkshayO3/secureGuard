@@ -1,0 +1,15 @@
+.git
+.gitignore
+Dockerfile
+*.md
+*.log
+*.env
+*.test
+*.DS_Store
+node_modules
+vendor
+tmp
+.idea
+.vscode
+*.swp
+coverage*
