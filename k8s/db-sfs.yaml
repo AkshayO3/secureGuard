@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: dbsfs
+    namespace: secureguard
+spec:
+    serviceName: "postgres-hl"
+    replicas: 1
+    selector:
+        matchLabels:
+            app: postgres
+    template:
+        metadata:
+            labels:
+                app: postgres
+        spec:
+            containers:
+                - name: postgres
+                  image: postgres
+                  envFrom:
+                      - secretRef:
+                            name: db-credentials
+                  ports:
+                      - containerPort: 5432
+                  volumeMounts:
+                      - name: data
+                        mountPath: /var/lib/postgresql/data
+    volumeClaimTemplates:
+        - metadata:
+              name: data
+          spec:
+              storageClassName: local-path
+              accessModes:
+                  - ReadWriteOnce
+              resources:
+                  requests:
+                      storage: 500Mi

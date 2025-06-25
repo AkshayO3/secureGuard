@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-migrations
+  namespace: secureguard
+data:
+  001_init.up.sql: |
+      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+      CREATE DATABASE secureguard;
+      
+      CREATE TYPE user_role AS ENUM ('admin', 'analyst', 'viewer');
+      
+      CREATE TABLE users (
+                           id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                           username VARCHAR(255) NOT NULL UNIQUE,
+                           email VARCHAR(255) NOT NULL UNIQUE,
+                           password_hash VARCHAR(255) NOT NULL,
+                           role user_role NOT NULL,
+                           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+                           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+      
+      CREATE TYPE incident_category AS ENUM ('malware', 'phishing', 'unauthorized_access');
+      CREATE TYPE incident_severity AS ENUM ('low', 'medium', 'high', 'critical');
+      CREATE TYPE incident_status AS ENUM ('detected', 'investigating', 'contained', 'resolved');
+      
+      CREATE TABLE incidents (
+                               id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                               title VARCHAR(255) NOT NULL,
+                               description TEXT,
+                               category incident_category NOT NULL,
+                               severity incident_severity NOT NULL,
+                               status incident_status NOT NULL,
+                               reported_by UUID NOT NULL REFERENCES users(id),
+                               assigned_to UUID REFERENCES users(id),
+                               created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+                               updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+      
+      CREATE TYPE vulnerability_severity AS ENUM ('low', 'medium', 'high', 'critical');
+      CREATE TYPE vulnerability_status AS ENUM ('open', 'in_progress', 'mitigated', 'resolved');
+      
+      CREATE TABLE vulnerabilities (
+                                     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                     cve_id VARCHAR(50),
+                                     title VARCHAR(255) NOT NULL,
+                                     description TEXT,
+                                     severity vulnerability_severity NOT NULL,
+                                     status vulnerability_status NOT NULL,
+                                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+                                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+      
+      CREATE TYPE asset_type AS ENUM ('server', 'workstation', 'network_device', 'application');
+      CREATE TYPE asset_status AS ENUM ('active', 'inactive', 'decommissioned');
+      
+      CREATE TABLE assets (
+                            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                            name VARCHAR(255) NOT NULL,
+                            type asset_type NOT NULL,
+                            ip_address VARCHAR(45),
+                            os VARCHAR(255),
+                            status asset_status NOT NULL,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+      
+      CREATE TYPE asset_vulnerability_status AS ENUM ('vulnerable', 'patched', 'not_applicable');
+      
+      CREATE TABLE asset_vulnerabilities (
+                                           id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                           asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+                                           vulnerability_id UUID NOT NULL REFERENCES vulnerabilities(id) ON DELETE CASCADE,
+                                           status asset_vulnerability_status NOT NULL,
+                                           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+                                           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+      
+      CREATE TABLE incident_assets (
+                                     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                     incident_id UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+                                     asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+                                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+      
+      CREATE TABLE audit_logs (
+                                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                user_id UUID NOT NULL REFERENCES users(id),
+                                action VARCHAR(255) NOT NULL,
+                                resource_type VARCHAR(100) NOT NULL,
+                                resource_id UUID NOT NULL,
+                                details JSONB,
+                                ip_address VARCHAR(45),
+                                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+      
+      ALTER TABLE incidents ALTER COLUMN assigned_to DROP NOT NULL;
