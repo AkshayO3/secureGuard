@@ -1,0 +1,37 @@
+namespace: secureguard
+replicaCount: 1
+
+image:
+  repository: akshayyyyy/secureguard-api
+  tag: latest
+
+service:
+  port: 4000
+
+database:
+  name: secureguard
+  image: postgres:15
+  replicas: 1
+  storageClass: local-path
+  storageSize: 500Mi
+  headlessServiceName: postgres-hl
+
+secretName: db-credentials
+
+migrations:
+  configMap: db-migrations
+
+ingress:
+  enabled: true
+  className: nginx
+  host: secureguard.local
+  isDefaultClass: "true"
+  controller: k8s.io/ingress-nginx
+
+secrets:
+  DB_URL: "cG9zdGdyZXM6Ly9teXVzZXI6bXlwYXNzd29yZEBwb3N0Z3Jlcy1obDo1NDMyL3Bvc3RncmVzP3NzbG1vZGU9ZGlzYWJsZQ=="
+  JWT_SECRET: "NDRIQU1JTFRPTldBU0hFRA=="
+  PORT: "NDAwMA=="
+  POSTGRES_USER: "bXl1c2Vy"
+  POSTGRES_PASSWORD: "bXlwYXNzd29yZA=="
+  DB: "c2VjdXJlZ3VhcmQ="

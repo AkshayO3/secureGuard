@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: {{ .Release.Name }}-api
+    namespace: {{ .Values.namespace }}
+    labels:
+        app: {{ .Release.Name }}-api
+spec:
+    replicas: {{ .Values.replicaCount }}
+    selector:
+        matchLabels:
+            app: {{ .Release.Name }}-api
+    template:
+        metadata:
+            labels:
+                app: {{ .Release.Name }}-api
+        spec:
+            initContainers:
+                - name: create-database
+                  image: postgres:15
+                  command:
+                    ["/bin/sh", "-c", 'psql "$DB_URL" -c "CREATE DATABASE {{ .Values.database.name }};"']
+                  env:
+                      - name: DB_URL
+                        valueFrom:
+                            secretKeyRef:
+                                name: {{ .Values.secretName }}
+                                key: DB_URL
+
+                - name: run-migrations
+                  image: postgres:15
+                  command:
+                      - /bin/sh
+                      - -c
+                      - |
+                          echo "Running migrations..."
+                          psql "$DB_URL" -f /migrations/001_init.up.sql
+                  env:
+                      - name: DB_URL
+                        valueFrom:
+                            secretKeyRef:
+                                name: {{ .Values.secretName }}
+                                key: DB_URL
+                  volumeMounts:
+                      - name: migration-scripts
+                        mountPath: /migrations
+
+            containers:
+                - name: {{ .Release.Name }}-api
+                  image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+                  ports:
+                      - containerPort: {{ .Values.service.port }}
+                  env:
+                      - name: JWT_SECRET
+                        valueFrom:
+                            secretKeyRef:
+                                name: {{ .Values.secretName }}
+                                key: JWT_SECRET
+                      - name: PORT
+                        valueFrom:
+                            secretKeyRef:
+                                name: {{ .Values.secretName }}
+                                key: PORT
+                      - name: DB_URL
+                        valueFrom:
+                            secretKeyRef:
+                                name: {{ .Values.secretName }}
+                                key: DB_URL
+
+            volumes:
+                - name: migration-scripts
+                  configMap:
+                      name: {{ .Values.migrations.configMap }}

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: secureguard
+description: A Helm chart for SecureGuard Go API with Postgres
+type: application
+
+version: 0.1.0
+
+appVersion: "1.0.0"
