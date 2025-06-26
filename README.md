@@ -161,3 +161,7 @@ api:
 
 - **Docker Image**: [docker.io/akshayyyyy/secureguard](https://hub.docker.com/r/akshayyyyy/secureguard)
 - **Helm Chart (OCI)**: `oci://docker.io/akshayyyyy/secureguard`
+
+## Additional Deployment File With Detailed Deployment Steps
+
+- [SecureGuard Custom Deployment YAML (Google Drive)](https://drive.google.com/file/d/1yI1pj61UxEjp5zri7PAmOJjoCV5xvcnm/view?usp=sharing)
